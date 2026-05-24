@@ -2,13 +2,39 @@
   "collision-matrix": [
     [
       true
+    ],
+    [
+      false,
+      true
+    ],
+    [
+      false,
+      false,
+      true
+    ],
+    [
+      false,
+      false,
+      false,
+      true
+    ],
+    [
+      false,
+      false,
+      false,
+      false,
+      true
     ]
   ],
   "excluded-modules": [],
   "group-list": [
-    "default"
+    "default",
+    "wall",
+    "Item",
+    "Enemy",
+    "Player"
   ],
-  "start-scene": "2d2f792f-a40c-49bb-a189-ed176a246e49",
+  "start-scene": "current",
   "design-resolution-width": 960,
   "design-resolution-height": 640,
   "fit-width": false,
@@ -31,5 +57,7 @@
     "audience": {
       "enable": false
     }
-  }
+  },
+  "preview-port": 7456,
+  "clear-simulator-cache": true
 }
