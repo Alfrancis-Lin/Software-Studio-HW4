@@ -1,6 +1,8 @@
 const { ccclass, property } = cc._decorator;
 
 import { SceneNames } from "./GameTypes";
+import { NodeNames } from "./GameTypes";
+import { GroupNames } from "./GameTypes";
 
 @ccclass
 export default class GameManager extends cc.Component {
@@ -40,7 +42,8 @@ export default class GameManager extends cc.Component {
         }
 
         GameManager._instance = this;
-        cc.game.addPersistRootNode(this.node);
+        this.ensurePhysicsEnabled();
+        this.ensurePersistRootNode();
         this.resetGameState();
     }
 
@@ -52,6 +55,7 @@ export default class GameManager extends cc.Component {
 
     start(): void {
         cc.log("GameManager: ready", this.getState());
+        this.bootstrapMinimalTestScene();
     }
 
     update(dt: number): void {
@@ -179,5 +183,71 @@ export default class GameManager extends cc.Component {
 
     public loadSceneGame(): void {
         cc.director.loadScene(SceneNames.Game);
+    }
+
+    private ensurePhysicsEnabled(): void {
+        const physics = cc.director.getPhysicsManager();
+        physics.enabled = true;
+        physics.gravity = cc.v2(0, -980);
+    }
+
+    private ensurePersistRootNode(): void {
+        if (!this.node.parent) {
+            cc.game.addPersistRootNode(this.node);
+            return;
+        }
+
+        cc.warn("GameManager: node is not at scene root, skipping persist root registration");
+    }
+
+    private bootstrapMinimalTestScene(): void {
+        if (cc.find("GameMaster") || cc.find("LevelBuilder")) {
+            return;
+        }
+
+        const playerNode = cc.find(NodeNames.Player);
+        if (playerNode) {
+            this.playerSpawn = playerNode.position.clone();
+        }
+
+        const cameraNode = cc.find(NodeNames.MainCamera);
+        if (cameraNode && playerNode) {
+            const follow = cameraNode.getComponent("CameraFollow") as cc.Component | null;
+            if (follow) {
+                follow.target = playerNode;
+            }
+        }
+
+        const gameWorld = cc.find(NodeNames.GameWorld) || this.node.parent;
+        if (!gameWorld) {
+            cc.warn("GameManager: GameWorld node not found, skipping test ground creation");
+            return;
+        }
+
+        if (gameWorld.getChildByName("TestGround")) {
+            return;
+        }
+
+        const ground = new cc.Node("TestGround");
+        ground.parent = gameWorld;
+        ground.setPosition(0, -240);
+        ground.group = GroupNames.Wall;
+
+        const graphics = ground.addComponent(cc.Graphics);
+        graphics.clear();
+        graphics.fillColor = cc.color(120, 72, 24);
+        graphics.rect(-1600, -24, 3200, 48);
+        graphics.fill();
+
+        const rigidBody = ground.addComponent(cc.RigidBody);
+        rigidBody.type = cc.RigidBodyType.Static;
+        rigidBody.enabledContactListener = true;
+
+        const collider = ground.addComponent(cc.PhysicsBoxCollider);
+        collider.size = cc.size(3200, 48);
+        collider.offset = cc.v2(0, 0);
+        collider.apply();
+
+        cc.log("GameManager: created minimal test ground");
     }
 }

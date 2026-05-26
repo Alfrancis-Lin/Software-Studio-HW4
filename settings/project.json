@@ -1,28 +1,38 @@
 {
   "collision-matrix": [
     [
+      true,
+      null,
+      null,
+      null,
       true
     ],
     [
       false,
+      true,
+      null,
+      null,
       true
     ],
     [
       false,
       false,
+      true,
+      null,
       true
     ],
     [
       false,
       false,
       false,
+      true,
       true
     ],
     [
-      false,
-      false,
-      false,
-      false,
+      true,
+      true,
+      true,
+      true,
       true
     ]
   ],
@@ -34,7 +44,6 @@
     "Enemy",
     "Player"
   ],
-  "start-scene": "current",
   "design-resolution-width": 960,
   "design-resolution-height": 640,
   "fit-width": false,
