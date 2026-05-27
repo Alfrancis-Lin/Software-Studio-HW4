@@ -1,5 +1,8 @@
 const { ccclass, property } = cc._decorator;
 
+import GameManager from "./GameManager";
+import EnemyController from "./EnemyController";
+
 @ccclass
 export default class LevelBuilder extends cc.Component {
     @property(cc.Prefab)
@@ -30,6 +33,7 @@ export default class LevelBuilder extends cc.Component {
     debugLog: boolean = true;
 
     private _tileStep: cc.Size | null = null;
+    private _playerSpawn: cc.Vec2 | null = null;
 
     private levelMap: string[] = [
         /* 00-05 */ "....................................................................................................",
@@ -81,6 +85,8 @@ export default class LevelBuilder extends cc.Component {
         }
 
         this.loadMapFromAsset();
+        this.useFixedTileSize = true;
+        this.tileSize = 16;
 
         this.buildLevel();
     }
@@ -99,6 +105,7 @@ export default class LevelBuilder extends cc.Component {
         let warnedBlock = false;
         let warnedEnemy = false;
         let spawnedCount = 0;
+        let spawnedEnemyCount = 0;
 
         for (let row = 0; row < this.levelMap.length; row += 1) {
             const line = this.levelMap[row];
@@ -123,6 +130,14 @@ export default class LevelBuilder extends cc.Component {
 
                 const node = cc.instantiate(prefab);
                 node.parent = root;
+                if (cell === 'E' && !node.getComponent(EnemyController)) {
+                    node.addComponent(EnemyController);
+                }
+                if (cell === 'E') {
+                    node.group = 'Enemy';
+                    spawnedEnemyCount += 1;
+                }
+                this.applyTileVisual(node, cell);
                 const targetX = startX + col * tileStep.width;
                 const targetY = startY - row * tileStep.height;
                 node.setPosition(targetX, targetY);
@@ -131,13 +146,16 @@ export default class LevelBuilder extends cc.Component {
         }
 
         if (this.debugLog) {
-            cc.log('LevelBuilder: spawned', spawnedCount, 'nodes');
+            cc.log('LevelBuilder: spawned', spawnedCount, 'nodes', 'enemies', spawnedEnemyCount);
         }
+
+        this.updatePlayerSpawnFromMap(startX, startY, tileStep);
     }
 
     private getPrefabForCell(cell: string): cc.Prefab | null {
         switch (cell) {
             case 'G':
+            case 'C':
                 return this.groundPrefab;
             case 'B':
                 return this.blockPrefab;
@@ -191,7 +209,34 @@ export default class LevelBuilder extends cc.Component {
             .split(/\r?\n/)
             .map((line) => line.trim())
             .filter((line) => line.length > 0)
-            .filter((line) => line.includes('.') || line.includes('G') || line.includes('B') || line.includes('E'));
+            .filter((line) => line.includes('.') || line.includes('G') || line.includes('B') || line.includes('C') || line.includes('E'));
+    }
+
+    private applyTileVisual(node: cc.Node, cell: string): void {
+        if (cell !== 'G' && cell !== 'C') {
+            return;
+        }
+
+        const sprite = node.getComponent(cc.Sprite) || node.getComponentInChildren(cc.Sprite);
+        if (!sprite || !sprite.spriteFrame) {
+            return;
+        }
+
+        const atlas = (sprite as any)._atlas as cc.SpriteAtlas | null;
+        if (!atlas) {
+            return;
+        }
+
+        const frameName = cell === 'G' ? 'tiles_83' : 'tiles_100';
+        const frame = atlas.getSpriteFrame(frameName);
+        if (!frame) {
+            cc.warn(`LevelBuilder: missing sprite frame ${frameName}`);
+            return;
+        }
+
+        sprite.spriteFrame = frame;
+        sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+        sprite.node.setContentSize(frame.getOriginalSize());
     }
 
     private getTileStep(): cc.Size {
@@ -227,5 +272,41 @@ export default class LevelBuilder extends cc.Component {
         sample.destroy();
         this._tileStep = step;
         return step;
+    }
+
+    private updatePlayerSpawnFromMap(startX: number, startY: number, tileStep: cc.Size): void {
+        const spawn = this.findLeftmostGroundSpawn(startX, startY, tileStep);
+        if (!spawn) {
+            return;
+        }
+
+        const manager = GameManager.instance;
+        if (manager) {
+            manager.playerSpawn = spawn;
+            cc.log('LevelBuilder: player spawn set', spawn);
+        }
+
+        this._playerSpawn = spawn;
+    }
+
+    private findLeftmostGroundSpawn(startX: number, startY: number, tileStep: cc.Size): cc.Vec2 | null {
+        for (let row = this.levelMap.length - 1; row >= 0; row -= 1) {
+            const line = this.levelMap[row];
+            for (let col = 0; col < line.length; col += 1) {
+                if (line.charAt(col) !== 'G') {
+                    continue;
+                }
+
+                const tileX = startX + col * tileStep.width;
+                const tileY = startY - row * tileStep.height;
+                return cc.v2(tileX, tileY + tileStep.height);
+            }
+        }
+
+        return null;
+    }
+
+    public getPlayerSpawn(): cc.Vec2 | null {
+        return this._playerSpawn ? this._playerSpawn.clone() : null;
     }
 }

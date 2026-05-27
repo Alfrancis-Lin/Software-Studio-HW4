@@ -258,6 +258,7 @@ Build a modular gameplay layer with clear ownership: one global state manager, o
 - Add `HeroController.ts` as a defensive movement-only controller with safe view hooks.
 - Normalize tile size and collider size so blocks are visible at 64x64 and match physics.
 - Align ground group usage with the `wall` collision group so Mario can stand on tiles.
+- Add question block, mushroom, and enemy interaction scripts for Mario growth and shrink behavior.
 - Center the horizontal map so tiles appear on both sides of the camera.
 - Match collider size to the actual sprite node size to eliminate oversized hitboxes.
 - Enable contact callbacks on the player so jump gating works reliably.
@@ -272,6 +273,9 @@ Build a modular gameplay layer with clear ownership: one global state manager, o
 - Switch back to `LevelBuilder` as the active generator and make `GameMaster` inert while fixing tile spacing.
 - Derive LevelBuilder's tile step from the ground prefab atlas size (16x16) to eliminate gaps.
 - Load `Map.txt` via `cc.TextAsset` and align map origin to the 960x640 view so tiles render across the full screen.
+- Keep `GameBootstrap` from calling an extra LevelBuilder rebuild so it does not clear the active map.
+- Map G to `tiles_83` and C to `tiles_100` from the ground atlas, while keeping B as the question block prefab.
+- Simplify Mario animation to an explicit grounded/airborne state machine using `mario_small_1~2` and `mario_small_4`.
 
 **How to test**
 - Attach `GameMaster.ts` to a node named `GameMaster` and assign prefabs and player.
@@ -335,6 +339,41 @@ Build a modular gameplay layer with clear ownership: one global state manager, o
 - Added runtime state for score, life, timer, respawn delay, and game-over.
 - Added scene-loading helpers for StartMenu, LevelSelect, and Game.
 - Added emitted events for later HUD and respawn wiring.
+
+### Current Task (Completed)
+**What is changing**
+- Implement `QuestionBlockController.ts`, `ItemController.ts`, and `EnemyController.ts`.
+- Extend the active player controller with big/small Mario state changes.
+
+**How to test**
+- Hit a question block from below and confirm a mushroom spawns.
+- Collect the mushroom and verify Mario becomes big.
+- Touch a goomba as big Mario and verify Mario returns to small.
+
+**Validation**
+- TypeScript compile check passed for the touched gameplay scripts.
+
+**Editor wiring needed**
+- Assign a mushroom prefab placeholder to the question block component.
+- Attach enemy and item controllers to the Goomba and mushroom prefabs.
+
+### Map Spawn and Ground Smoothing (In Progress)
+**What is changing**
+- Make `LevelBuilder` guarantee enemy prefabs receive their controller when spawned from `E` map cells.
+- Slightly shrink the player collision box to reduce snagging on tile seams with the smallest possible change.
+- Move respawn spawn-point selection to the leftmost ground tile in the generated map.
+- Lower item/player collider friction to reduce floor sticking.
+- Switch moving pickups/enemies to circle colliders to reduce snagging against tile corners.
+- Prevent GameBootstrap from overriding the map-derived respawn point when LevelBuilder is active.
+- Cache the map-derived respawn point in LevelBuilder and sync it into GameManager after scene startup.
+- Disable the legacy BoxCollider on moving items/enemies so the new circle collider is the only active shape.
+- Make Goomba kinematic so it stays visible on the map instead of falling out of view.
+- Add a short mushroom pickup grace period so the player must touch the mushroom after it emerges.
+
+**How to test**
+- Put `E` in `Map.txt` and confirm a Goomba is spawned at that cell.
+- Walk across the ground and confirm Mario no longer catches on tile edges as often.
+- Kill Mario and confirm the respawn point is the same fixed left-side ground location.
 
 **How to test**
 - Add `GameManager` to the `Game` scene on an empty node named `GameManager`.

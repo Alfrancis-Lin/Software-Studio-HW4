@@ -56,6 +56,8 @@ export default class GameManager extends cc.Component {
     start(): void {
         cc.log("GameManager: ready", this.getState());
         this.bootstrapMinimalTestScene();
+        this.scheduleOnce(this.syncPlayerSpawnFromLevelBuilder, 0);
+        this.scheduleOnce(this.syncPlayerSpawnFromLevelBuilder, 0.1);
     }
 
     update(dt: number): void {
@@ -249,5 +251,25 @@ export default class GameManager extends cc.Component {
         collider.apply();
 
         cc.log("GameManager: created minimal test ground");
+    }
+
+    private syncPlayerSpawnFromLevelBuilder(): void {
+        const levelBuilderNode = cc.find(NodeNames.LevelBuilder);
+        if (!levelBuilderNode) {
+            return;
+        }
+
+        const levelBuilder = levelBuilderNode.getComponent("LevelBuilder") as any;
+        if (!levelBuilder || typeof levelBuilder.getPlayerSpawn !== "function") {
+            return;
+        }
+
+        const spawn = levelBuilder.getPlayerSpawn();
+        if (!spawn) {
+            return;
+        }
+
+        this.playerSpawn = spawn;
+        cc.log("GameManager: synced player spawn from LevelBuilder", spawn);
     }
 }

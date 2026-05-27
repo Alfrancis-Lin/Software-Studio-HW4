@@ -34,9 +34,9 @@ private levelMap: string[] = [
         /* 32-35 */ "....................................................................................................",
         /* 33-35 */ "............BBBB......................B.B.B..............BBBBB...............................BBBB...",
         /* 34-35 */ "....................................................................................................",
-        /* 35-35 */ "..................E.....................................................E...........................",
-        /* 36-39 */ "....................................................................................................",
-        /* 37-39 */ "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
-        /* 38-39 */ "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
-        /* 39-39 */ "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+        /* 35-35 */ "............................C...................................................C...................",
+        /* 36-39 */ "...............C..E........CC..................................................CCC..................",
+        /* 37-39 */ "GGGGGGGGGGGGGGGGGGGGGGGGGGGGG....GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+        /* 38-39 */ "GGGGGGGGGGGGGGGGGGGGGGGGGGGGG....GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+        /* 39-39 */ "GGGGGGGGGGGGGGGGGGGGGGGGGGGGG....GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
     ];

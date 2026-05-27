@@ -29,7 +29,6 @@ export default class GameBootstrap extends cc.Component {
 	start(): void {
 		this.bindCameraTarget();
 		this.registerPlayerSpawn();
-		this.buildLevelIfPossible();
 	}
 
 	private resolveSceneNodes(): void {
@@ -83,17 +82,13 @@ export default class GameBootstrap extends cc.Component {
 			return;
 		}
 
-		manager.playerSpawn = this.playerNode.position.clone();
-	}
-
-	private buildLevelIfPossible(): void {
-		if (!this.levelBuilderNode) {
+		if (this.levelBuilderNode) {
 			return;
 		}
 
-		const builder = this.levelBuilderNode.getComponent(LevelBuilder);
-		if (builder) {
-			builder.buildLevel();
+		if (manager.playerSpawn.x === 0 && manager.playerSpawn.y === 0) {
+			manager.playerSpawn = cc.v2(this.playerNode.position.x, this.playerNode.position.y);
 		}
 	}
+
 }

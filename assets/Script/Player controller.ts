@@ -29,24 +29,29 @@ export default class PlayerController extends cc.Component {
     @property
     fallDeathY: number = -400;
 
+    @property
+    colliderPadding: number = 1;
+
     private _moveLeft: boolean = false;
     private _moveRight: boolean = false;
     private _jumpRequested: boolean = false;
     private _facingRight: boolean = true;
     private _isJumping: boolean = false;
+    private _isBig: boolean = false;
     private _currentAtlas: cc.SpriteAtlas | null = null;
     private _runFrames: string[] = [];
-    private _jumpFrames: string[] = [];
     private _frameIndex: number = 0;
     private _frameTimer: number = 0;
     private _frameInterval: number = 0.12;
     private _gameManager: cc.Node | null = null;
     private _groundContactCount: number = 0;
     private _respawnLocked: boolean = false;
-    private _jumpFrameUp: string | null = null;
-    private _jumpFrameApex: string | null = null;
-    private _jumpFrameDown: string | null = null;
+    private _jumpFrame: string | null = null;
     private _loggedSetup: boolean = false;
+
+    public get isBig(): boolean {
+        return this._isBig;
+    }
 
     onLoad(): void {
         if (!this.sprite) {
@@ -65,29 +70,36 @@ export default class PlayerController extends cc.Component {
             this.rb = this.node.addComponent(cc.RigidBody);
         }
 
-        if (!this.getComponent(cc.PhysicsCollider)) {
-            const collider = this.node.addComponent(cc.PhysicsBoxCollider);
-            collider.size = cc.size(48, 64);
-            collider.offset = cc.v2(0, 0);
-            collider.apply();
-        }
-
+        const collider = this.getComponent(cc.PhysicsBoxCollider) || this.node.addComponent(cc.PhysicsBoxCollider);
         this.ensureRigidBodySetup();
         this.ensurePhysicsManager();
+        this.syncGameManagerReference();
+        this.bindGameManagerEvents();
 
         this._currentAtlas = this.smallAtlas || this.bigAtlas || null;
         this.prepareFrames();
-        this.syncGameManagerReference();
-        this.bindGameManagerEvents();
-        this.refreshSpriteFrame(true);
+        this.applyCurrentAppearance(true);
+
+        const frameSize = this.getSpriteSizeForState(this._isBig);
+        collider.size = cc.size(frameSize.width, frameSize.height);
+        collider.offset = cc.v2(0, 0);
+        collider.apply();
+
+        if (this.sprite) {
+            this.sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+            this.sprite.node.setContentSize(frameSize);
+        }
     }
 
     onEnable(): void {
+        this.resetInputState();
         this.bindInput();
+        cc.game.on(cc.game.EVENT_HIDE, this.onGameHidden, this);
     }
 
     onDisable(): void {
         this.unbindInput();
+        cc.game.off(cc.game.EVENT_HIDE, this.onGameHidden, this);
     }
 
     onDestroy(): void {
@@ -107,7 +119,6 @@ export default class PlayerController extends cc.Component {
 
         const velocity = this.rb.linearVelocity;
         let horizontalVelocity = 0;
-        const isMoving = this._moveLeft || this._moveRight;
 
         if (this._moveLeft) {
             horizontalVelocity -= this.moveSpeed;
@@ -126,7 +137,7 @@ export default class PlayerController extends cc.Component {
             this.tryJump();
         }
 
-        this._isJumping = !this.isGrounded() && Math.abs(this.rb.linearVelocity.y) > 0.01;
+        this._isJumping = !this.isGrounded() && Math.abs(this.rb.linearVelocity.y) > 2;
 
         if (this.node.y < this.fallDeathY && !this._respawnLocked) {
             this._respawnLocked = true;
@@ -134,6 +145,25 @@ export default class PlayerController extends cc.Component {
         }
 
         this.updateSpriteAnimation(dt);
+    }
+
+    public growUp(): void {
+        this.setBigState(true);
+    }
+
+    public shrinkToSmall(): void {
+        this.setBigState(false);
+    }
+
+    public setBigState(isBig: boolean): void {
+        if (this._isBig === isBig && this._currentAtlas) {
+            return;
+        }
+
+        this._isBig = isBig;
+        this._currentAtlas = this._isBig ? (this.bigAtlas || this.smallAtlas || null) : (this.smallAtlas || this.bigAtlas || null);
+        this.prepareFrames();
+        this.applyCurrentAppearance(true);
     }
 
     private bindInput(): void {
@@ -157,6 +187,7 @@ export default class PlayerController extends cc.Component {
                 this._moveRight = true;
                 break;
             case cc.macro.KEY.space:
+            case cc.macro.KEY.w:
                 this._jumpRequested = true;
                 break;
         }
@@ -173,6 +204,16 @@ export default class PlayerController extends cc.Component {
                 this._moveRight = false;
                 break;
         }
+    }
+
+    private onGameHidden(): void {
+        this.resetInputState();
+    }
+
+    private resetInputState(): void {
+        this._moveLeft = false;
+        this._moveRight = false;
+        this._jumpRequested = false;
     }
 
     private tryJump(): void {
@@ -195,19 +236,25 @@ export default class PlayerController extends cc.Component {
         const manager = GameManager.instance;
         if (manager) {
             manager.loseLife("fall");
-        } else {
-            cc.warn("PlayerController: GameManager instance is missing, cannot respawn");
+            return;
         }
+
+        cc.warn("PlayerController: GameManager instance is missing, cannot respawn");
     }
 
     private syncGameManagerReference(): void {
+        const manager = GameManager.instance;
+        if (manager) {
+            this._gameManager = manager.node;
+            return;
+        }
+
         if (this.gameManagerNode) {
             this._gameManager = this.gameManagerNode;
             return;
         }
 
-        const manager = cc.find("GameManager");
-        this._gameManager = manager || null;
+        this._gameManager = null;
     }
 
     private bindGameManagerEvents(): void {
@@ -238,8 +285,10 @@ export default class PlayerController extends cc.Component {
             this.rb.linearVelocity = cc.v2(0, 0);
             this.rb.angularVelocity = 0;
         }
+
         this._isJumping = false;
         this._respawnLocked = false;
+        this.setBigState(false);
         this.refreshSpriteFrame(true);
     }
 
@@ -298,41 +347,24 @@ export default class PlayerController extends cc.Component {
     }
 
     private prepareFrames(): void {
-        const usingBig = this._currentAtlas && this.bigAtlas && this._currentAtlas === this.bigAtlas;
-        const runNames = usingBig
+        const usingBigAtlas = this._currentAtlas && this.bigAtlas && this._currentAtlas === this.bigAtlas;
+        const runNames = usingBigAtlas
             ? ["mario_big_10", "mario_big_11"]
             : ["mario_small_1", "mario_small_2"];
-        const jumpNames = usingBig
-            ? ["mario_big_7", "mario_big_8"]
-            : ["mario_small_3", "mario_small_4", "mario_small_5"];
+        const jumpName = usingBigAtlas ? "mario_big_7" : "mario_small_4";
 
         this._runFrames = this.collectFrames(runNames);
-        this._jumpFrames = this.collectFrames(jumpNames);
+        this._jumpFrame = this.hasFrame(jumpName) ? jumpName : null;
 
-        if (usingBig) {
-            this._jumpFrameUp = this._jumpFrames[0] || null;
-            this._jumpFrameApex = this._jumpFrames[0] || null;
-            this._jumpFrameDown = this._jumpFrames[1] || this._jumpFrames[0] || null;
-        } else {
-            this._jumpFrameUp = this._jumpFrames[0] || null;
-            this._jumpFrameApex = this._jumpFrames[1] || this._jumpFrames[0] || null;
-            this._jumpFrameDown = this._jumpFrames[2] || this._jumpFrames[1] || this._jumpFrames[0] || null;
-        }
-
-        if (!this._runFrames.length || !this._jumpFrames.length) {
+        if (!this._runFrames.length || !this._jumpFrame) {
             cc.warn("PlayerController: atlas frames are incomplete, check atlas.txt and atlas assignment in Inspector");
         }
     }
 
     private collectFrames(names: string[]): string[] {
         const result: string[] = [];
-        if (!this._currentAtlas) {
-            return result;
-        }
-
         for (const name of names) {
-            const frame = this._currentAtlas.getSpriteFrame(name);
-            if (frame) {
+            if (this.hasFrame(name)) {
                 result.push(name);
             }
         }
@@ -340,14 +372,20 @@ export default class PlayerController extends cc.Component {
         return result;
     }
 
+    private hasFrame(frameName: string): boolean {
+        if (!this._currentAtlas) {
+            return false;
+        }
+
+        return !!this._currentAtlas.getSpriteFrame(frameName);
+    }
+
     private updateSpriteAnimation(dt: number): void {
         if (!this.sprite || !this._currentAtlas) {
             return;
         }
 
-        const isMoving = this._moveLeft || this._moveRight;
-
-        if (this._isJumping) {
+        if (this._isJumping || !this.isGrounded()) {
             this.applyJumpFrame();
             return;
         }
@@ -356,7 +394,7 @@ export default class PlayerController extends cc.Component {
             return;
         }
 
-        if (!isMoving) {
+        if (!(this._moveLeft || this._moveRight)) {
             this._frameIndex = 0;
             this.applyFrame(this._runFrames[0]);
             return;
@@ -390,24 +428,18 @@ export default class PlayerController extends cc.Component {
         this.applyFrame(this._runFrames[0]);
     }
 
+    private applyCurrentAppearance(forceJump: boolean = false): void {
+        this.updateColliderSizeForCurrentState();
+        this.refreshSpriteFrame(forceJump);
+    }
+
     private applyJumpFrame(): void {
         if (!this._currentAtlas || !this.sprite) {
             return;
         }
 
-        const velocityY = this.rb ? this.rb.linearVelocity.y : 0;
-        let frameName = this._jumpFrameUp || this._jumpFrameApex || this._jumpFrameDown;
-
-        if (velocityY > 40 && this._jumpFrameUp) {
-            frameName = this._jumpFrameUp;
-        } else if (velocityY < -40 && this._jumpFrameDown) {
-            frameName = this._jumpFrameDown;
-        } else if (this._jumpFrameApex) {
-            frameName = this._jumpFrameApex;
-        }
-
-        if (frameName) {
-            this.applyFrame(frameName);
+        if (this._jumpFrame) {
+            this.applyFrame(this._jumpFrame);
         }
     }
 
@@ -420,6 +452,26 @@ export default class PlayerController extends cc.Component {
         if (frame) {
             this.sprite.spriteFrame = frame;
             this.sprite.node.scaleX = this._facingRight ? 1 : -1;
+        }
+    }
+
+    private updateColliderSizeForCurrentState(): void {
+        const collider = this.getComponent(cc.PhysicsBoxCollider);
+        if (!collider) {
+            return;
+        }
+
+        const frameSize = this.getSpriteSizeForState(this._isBig);
+        const width = Math.max(4, frameSize.width - this.colliderPadding * 2);
+        const height = Math.max(4, frameSize.height - this.colliderPadding * 2);
+        collider.size = cc.size(width, height);
+        collider.offset = cc.v2(0, 0);
+        collider.friction = 0;
+        collider.restitution = 0;
+        collider.apply();
+
+        if (this.sprite) {
+            this.sprite.node.setContentSize(frameSize);
         }
     }
 
@@ -436,16 +488,97 @@ export default class PlayerController extends cc.Component {
         return group === GroupNames.Wall || group === GroupNames.Item;
     }
 
+    private isEnemyCollider(collider: cc.Collider | null): boolean {
+        if (!collider || !collider.node) {
+            return false;
+        }
+
+        return collider.node.group === GroupNames.Enemy;
+    }
+
+    private isItemCollider(collider: cc.Collider | null): boolean {
+        if (!collider || !collider.node) {
+            return false;
+        }
+
+        return collider.node.group === GroupNames.Item || !!collider.node.getComponent("ItemController");
+    }
+
+    private isHitFromAbove(otherCollider: cc.Collider): boolean {
+        return this.node.y >= otherCollider.node.y + 4;
+    }
+
     onBeginContact(contact: cc.PhysicsContact, selfCollider: cc.Collider, otherCollider: cc.Collider): void {
-        const normal = contact.getWorldManifold().normal;
-        if (this.isGroundCollider(otherCollider) && normal && normal.y > 0.5) {
+        if (this.isGroundCollider(otherCollider)) {
             this._groundContactCount += 1;
+            this._respawnLocked = false;
+            return;
+        }
+
+        if (this.isItemCollider(otherCollider)) {
+            const item = otherCollider.node.getComponent("ItemController") as any;
+            if (item && typeof item.collectByPlayer === "function") {
+                item.collectByPlayer(this.node);
+            } else {
+                this.growUp();
+                otherCollider.node.destroy();
+            }
+            return;
+        }
+
+        if (this.isEnemyCollider(otherCollider)) {
+            this.handleEnemyContact(otherCollider, contact);
         }
     }
 
     onEndContact(contact: cc.PhysicsContact, selfCollider: cc.Collider, otherCollider: cc.Collider): void {
-        if (this.isGroundCollider(otherCollider) && this._groundContactCount > 0) {
-            this._groundContactCount -= 1;
+        if (this.isGroundCollider(otherCollider)) {
+            if (this._groundContactCount > 0) {
+                this._groundContactCount -= 1;
+            }
         }
+    }
+
+    private handleEnemyContact(otherCollider: cc.Collider, contact: cc.PhysicsContact): void {
+        const enemyNode = otherCollider.node;
+        const enemy = enemyNode.getComponent("EnemyController") as any;
+        const stomped = this.isHitFromAbove(otherCollider);
+
+        if (stomped && enemy && typeof enemy.stomp === "function") {
+            enemy.stomp();
+            if (this.rb) {
+                this.rb.linearVelocity = cc.v2(this.rb.linearVelocity.x, 220);
+            }
+            return;
+        }
+
+        if (this._isBig) {
+            this.shrinkToSmall();
+            return;
+        }
+
+        this.requestRespawn();
+    }
+
+    private getSpriteSizeForState(isBig: boolean): cc.Size {
+        const atlas = isBig ? this.bigAtlas || this.smallAtlas : this.smallAtlas || this.bigAtlas;
+        if (!atlas) {
+            return cc.size(isBig ? 16 : 16, isBig ? 26 : 16);
+        }
+
+        const frameNames = isBig ? ["mario_big_10", "mario_big_7"] : ["mario_small_1", "mario_small_4"];
+        for (const frameName of frameNames) {
+            const frame = atlas.getSpriteFrame(frameName);
+            if (frame) {
+                return frame.getOriginalSize();
+            }
+        }
+
+        const fallback = atlas.getSpriteFrame(isBig ? "mario_big_10" : "mario_small_1");
+        if (fallback) {
+            return fallback.getOriginalSize();
+        }
+
+        return cc.size(isBig ? 16 : 16, isBig ? 26 : 16);
     }
 }

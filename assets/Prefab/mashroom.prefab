@@ -13,7 +13,7 @@
   },
   {
     "__type__": "cc.Node",
-    "_name": "QB1",
+    "_name": "mashroom",
     "_objFlags": 0,
     "_parent": null,
     "_children": [],
@@ -27,26 +27,17 @@
       },
       {
         "__id__": 4
-      },
-      {
-        "__id__": 5
-      },
-      {
-        "__id__": 6
-      },
-      {
-        "__id__": 7
       }
     ],
     "_prefab": {
-      "__id__": 8
+      "__id__": 5
     },
     "_opacity": 255,
     "_color": {
       "__type__": "cc.Color",
       "r": 255,
-      "g": 210,
-      "b": 40,
+      "g": 255,
+      "b": 255,
       "a": 255
     },
     "_contentSize": {
@@ -104,7 +95,7 @@
     "_srcBlendFactor": 770,
     "_dstBlendFactor": 771,
     "_spriteFrame": {
-      "__uuid__": "946e156a-1661-409a-a499-a399624194f0"
+      "__uuid__": "690a9568-4c58-40ce-9a4a-c8a6b8691b4c"
     },
     "_type": 0,
     "_sizeMode": 1,
@@ -130,7 +121,7 @@
       "__id__": 1
     },
     "_enabled": true,
-    "_type": 0,
+    "_type": 2,
     "_allowSleep": true,
     "_gravityScale": 1,
     "_linearDamping": 0,
@@ -141,8 +132,8 @@
       "y": 0
     },
     "_angularVelocity": 0,
-    "_fixedRotation": false,
-    "enabledContactListener": false,
+    "_fixedRotation": true,
+    "enabledContactListener": true,
     "bullet": false,
     "awakeOnLoad": true,
     "_id": ""
@@ -168,61 +159,9 @@
     },
     "_size": {
       "__type__": "cc.Size",
-      "width": 16,
-      "height": 16
+      "width": 20,
+      "height": 24
     },
-    "_id": ""
-  },
-  {
-    "__type__": "cc.Animation",
-    "_name": "",
-    "_objFlags": 0,
-    "node": {
-      "__id__": 1
-    },
-    "_enabled": false,
-    "_defaultClip": {
-      "__uuid__": "b03b516e-7f1f-4004-bc25-c0a50cb119cf"
-    },
-    "_clips": [
-      {
-        "__uuid__": "b03b516e-7f1f-4004-bc25-c0a50cb119cf"
-      }
-    ],
-    "playOnLoad": true,
-    "_id": ""
-  },
-  {
-    "__type__": "51f7eb4cu5PS7VbJffdQD5F",
-    "_name": "",
-    "_objFlags": 0,
-    "node": {
-      "__id__": 1
-    },
-    "_enabled": false,
-    "rb": null,
-    "sprite": null,
-    "moveSpeed": 80,
-    "launchSpeed": 180,
-    "launchDuration": 0.18,
-    "_id": ""
-  },
-  {
-    "__type__": "33a6egE4P9EEbtfm+SPICFm",
-    "_name": "",
-    "_objFlags": 0,
-    "node": {
-      "__id__": 1
-    },
-    "_enabled": true,
-    "sprite": null,
-    "usedSprite": null,
-    "itemPrefab": {
-      "__uuid__": "f3d80f9d-55fa-4c5f-bfd3-24df64c1e611"
-    },
-    "gameManagerNode": null,
-    "scoreValue": 100,
-    "itemSpawnOffsetY": 18,
     "_id": ""
   },
   {
