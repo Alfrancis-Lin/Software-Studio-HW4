@@ -139,7 +139,7 @@ export default class GameManager extends cc.Component {
             return;
         }
 
-        AudioManager.instance?.playLoseOneLife();
+        this.playLoseOneLifeSfx();
         this._life -= 1;
         cc.warn("GameManager: life lost", reason, "remaining", this._life);
 
@@ -196,6 +196,23 @@ export default class GameManager extends cc.Component {
         cc.director.resume();
         cc.director.getScheduler().setTimeScale(1);
         cc.director.loadScene(SceneNames.Game);
+    }
+
+    private playLoseOneLifeSfx(): void {
+        const audioManager = AudioManager.instance || (cc.find(NodeNames.AudioManager)?.getComponent(AudioManager) as AudioManager | null);
+        if (audioManager) {
+            audioManager.playLoseOneLife();
+            return;
+        }
+
+        cc.loader.loadRes("audio/loseOneLife", cc.AudioClip, (err, clip) => {
+            if (err || !clip) {
+                cc.warn("GameManager: failed to play loseOneLife sfx", err);
+                return;
+            }
+
+            cc.audioEngine.playEffect(clip, false);
+        });
     }
 
     private ensurePhysicsEnabled(): void {
