@@ -529,7 +529,7 @@ export default class PlayerController extends cc.Component {
         }
 
         if (this.isEnemyCollider(otherCollider)) {
-            this.handleEnemyContact(otherCollider, contact);
+            this.handleEnemyContact(selfCollider, otherCollider, contact);
         }
     }
 
@@ -541,10 +541,10 @@ export default class PlayerController extends cc.Component {
         }
     }
 
-    private handleEnemyContact(otherCollider: cc.Collider, contact: cc.PhysicsContact): void {
+    private handleEnemyContact(selfCollider: cc.Collider, otherCollider: cc.Collider, contact: cc.PhysicsContact): void {
         const enemyNode = otherCollider.node;
         const enemy = enemyNode.getComponent("EnemyController") as any;
-        const stomped = this.isValidStomp(otherCollider);
+        const stomped = this.isValidStomp(selfCollider, otherCollider, contact);
 
         if (stomped && enemy && typeof enemy.stomp === "function") {
             enemy.stomp();
@@ -563,7 +563,7 @@ export default class PlayerController extends cc.Component {
         this.requestRespawn();
     }
 
-    private isValidStomp(otherCollider: cc.Collider): boolean {
+    private isValidStomp(selfCollider: cc.Collider, otherCollider: cc.Collider, contact: cc.PhysicsContact): boolean {
         if (!this.rb) {
             return false;
         }
@@ -572,7 +572,12 @@ export default class PlayerController extends cc.Component {
         const enemyY = otherCollider.node.y;
         const yDelta = playerY - enemyY;
         const fallingFastEnough = this.rb.linearVelocity.y < -30;
-        return yDelta > 10 && fallingFastEnough;
+        let normal = contact.getWorldManifold().normal;
+        if (contact.colliderA === selfCollider) {
+            normal = cc.v2(-normal.x, -normal.y);
+        }
+
+        return yDelta > 10 && fallingFastEnough && normal.y > 0.5;
     }
 
     private getSpriteSizeForState(isBig: boolean): cc.Size {

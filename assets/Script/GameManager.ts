@@ -22,7 +22,7 @@ export default class GameManager extends cc.Component {
     respawnDelay: number = 0.5;
 
     @property({ type: cc.Vec2 })
-    playerSpawn: cc.Vec2 = cc.v2(0, 0);
+    playerSpawn: cc.Vec2 = cc.v2(200, 200);
 
     private _score: number = 0;
     private _life: number = 3;
@@ -177,6 +177,9 @@ export default class GameManager extends cc.Component {
         this.cancelRespawn();
         cc.warn("GameManager: game over");
         this.node.emit("game-manager-gameover");
+        this.scheduleOnce(() => {
+            this.loadSceneLevelSelect();
+        }, 0);
     }
 
     public loadSceneStartMenu(): void {

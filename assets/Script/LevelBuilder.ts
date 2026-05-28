@@ -397,16 +397,25 @@ export default class LevelBuilder extends cc.Component {
     }
 
     private findLeftmostGroundSpawn(startX: number, startY: number, tileStep: cc.Size): cc.Vec2 | null {
+        const questionBlockSpawn = this.findLeftmostCellSpawn('B', startX, startY, tileStep, tileStep.height);
+        if (questionBlockSpawn) {
+            return questionBlockSpawn;
+        }
+
+        return this.findLeftmostCellSpawn('G', startX, startY, tileStep, tileStep.height);
+    }
+
+    private findLeftmostCellSpawn(cellType: string, startX: number, startY: number, tileStep: cc.Size, yOffset: number): cc.Vec2 | null {
         for (let row = this.levelMap.length - 1; row >= 0; row -= 1) {
             const line = this.levelMap[row];
             for (let col = 0; col < line.length; col += 1) {
-                if (line.charAt(col) !== 'G') {
+                if (line.charAt(col) !== cellType) {
                     continue;
                 }
 
                 const tileX = startX + col * tileStep.width;
                 const tileY = startY - row * tileStep.height;
-                return cc.v2(tileX, tileY + tileStep.height);
+                return cc.v2(tileX, tileY + yOffset);
             }
         }
 
