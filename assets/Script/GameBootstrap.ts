@@ -29,6 +29,8 @@ export default class GameBootstrap extends cc.Component {
 	start(): void {
 		this.bindCameraTarget();
 		this.registerPlayerSpawn();
+		this.scheduleOnce(this.applySpawnPositionToPlayer, 0);
+		this.scheduleOnce(this.applySpawnPositionToPlayer, 0.08);
 	}
 
 	private resolveSceneNodes(): void {
@@ -88,6 +90,25 @@ export default class GameBootstrap extends cc.Component {
 
 		if (manager.playerSpawn.x === 0 && manager.playerSpawn.y === 0) {
 			manager.playerSpawn = cc.v2(this.playerNode.position.x, this.playerNode.position.y);
+		}
+	}
+
+	private applySpawnPositionToPlayer(): void {
+		const manager = GameManager.instance;
+		if (!manager || !this.playerNode) {
+			return;
+		}
+
+		const spawn = manager.playerSpawn;
+		if (spawn.x === 0 && spawn.y === 0) {
+			return;
+		}
+
+		this.playerNode.setPosition(spawn.x, spawn.y);
+		const rb = this.playerNode.getComponent(cc.RigidBody);
+		if (rb) {
+			rb.linearVelocity = cc.v2(0, 0);
+			rb.angularVelocity = 0;
 		}
 	}
 

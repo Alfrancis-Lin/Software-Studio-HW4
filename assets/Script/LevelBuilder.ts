@@ -2,6 +2,7 @@ const { ccclass, property } = cc._decorator;
 
 import GameManager from "./GameManager";
 import EnemyController from "./EnemyController";
+import { GroupNames } from "./GameTypes";
 
 @ccclass
 export default class LevelBuilder extends cc.Component {
@@ -34,6 +35,8 @@ export default class LevelBuilder extends cc.Component {
 
     private _tileStep: cc.Size | null = null;
     private _playerSpawn: cc.Vec2 | null = null;
+
+    private static _activeBuilder: LevelBuilder | null = null;
 
     private levelMap: string[] = [
         /* 00-05 */ "....................................................................................................",
@@ -77,6 +80,27 @@ export default class LevelBuilder extends cc.Component {
         /* 38-39 */ "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
         /* 39-39 */ "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
     ];
+
+    onLoad(): void {
+        if (!this.groundPrefab) {
+            // There is an extra LevelBuilder in Game.fire with null prefab refs.
+            this.enabled = false;
+            return;
+        }
+
+        if (LevelBuilder._activeBuilder && LevelBuilder._activeBuilder !== this) {
+            this.enabled = false;
+            return;
+        }
+
+        LevelBuilder._activeBuilder = this;
+    }
+
+    onDestroy(): void {
+        if (LevelBuilder._activeBuilder === this) {
+            LevelBuilder._activeBuilder = null;
+        }
+    }
 
     start(): void {
         if (!this.groundPrefab) {
@@ -141,6 +165,9 @@ export default class LevelBuilder extends cc.Component {
                 const targetX = startX + col * tileStep.width;
                 const targetY = startY - row * tileStep.height;
                 node.setPosition(targetX, targetY);
+                if (cell === 'G' || cell === 'C') {
+                    this.disableTilePhysics(node);
+                }
                 spawnedCount += 1;
             }
         }
@@ -149,6 +176,7 @@ export default class LevelBuilder extends cc.Component {
             cc.log('LevelBuilder: spawned', spawnedCount, 'nodes', 'enemies', spawnedEnemyCount);
         }
 
+        this.buildMergedGroundColliders(root, startX, startY, tileStep);
         this.updatePlayerSpawnFromMap(startX, startY, tileStep);
     }
 
@@ -237,6 +265,85 @@ export default class LevelBuilder extends cc.Component {
         sprite.spriteFrame = frame;
         sprite.sizeMode = cc.Sprite.SizeMode.RAW;
         sprite.node.setContentSize(frame.getOriginalSize());
+    }
+
+    private disableTilePhysics(node: cc.Node): void {
+        const rb = node.getComponent(cc.RigidBody);
+        if (rb) {
+            rb.destroy();
+        }
+
+        const box = node.getComponent(cc.PhysicsBoxCollider);
+        if (box) {
+            box.destroy();
+        }
+
+        const circle = node.getComponent(cc.PhysicsCircleCollider);
+        if (circle) {
+            circle.destroy();
+        }
+    }
+
+    private buildMergedGroundColliders(root: cc.Node, startX: number, startY: number, tileStep: cc.Size): void {
+        const collisionRoot = new cc.Node('GroundCollision');
+        collisionRoot.parent = root;
+        collisionRoot.group = GroupNames.Wall;
+
+        for (let row = 0; row < this.levelMap.length; row += 1) {
+            const line = this.levelMap[row];
+            let col = 0;
+
+            while (col < line.length) {
+                if (!this.isGroundCell(line.charAt(col))) {
+                    col += 1;
+                    continue;
+                }
+
+                const runStart = col;
+                while (col < line.length && this.isGroundCell(line.charAt(col))) {
+                    col += 1;
+                }
+
+                const runLength = col - runStart;
+                this.createGroundStripCollider(collisionRoot, row, runStart, runLength, startX, startY, tileStep);
+            }
+        }
+    }
+
+    private createGroundStripCollider(
+        parent: cc.Node,
+        row: number,
+        startCol: number,
+        runLength: number,
+        startX: number,
+        startY: number,
+        tileStep: cc.Size,
+    ): void {
+        const strip = new cc.Node(`GroundStrip_${row}_${startCol}`);
+        strip.parent = parent;
+        strip.group = GroupNames.Wall;
+
+        const centerX = startX + (startCol + runLength * 0.5 - 0.5) * tileStep.width;
+        const centerY = startY - row * tileStep.height;
+        strip.setPosition(centerX, centerY);
+
+        const rb = strip.addComponent(cc.RigidBody);
+        rb.type = cc.RigidBodyType.Static;
+        rb.gravityScale = 0;
+        rb.fixedRotation = true;
+        rb.enabledContactListener = true;
+
+        const collider = strip.addComponent(cc.PhysicsBoxCollider);
+        // Add a tiny overlap so adjacent strips cannot leave a micro seam.
+        collider.size = cc.size(runLength * tileStep.width + 0.5, tileStep.height + 0.5);
+        collider.offset = cc.v2(0, 0);
+        collider.friction = 0;
+        collider.restitution = 0;
+        collider.apply();
+    }
+
+    private isGroundCell(cell: string): boolean {
+        return cell === 'G' || cell === 'C';
     }
 
     private getTileStep(): cc.Size {

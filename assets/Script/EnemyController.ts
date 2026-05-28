@@ -10,18 +10,29 @@ export default class EnemyController extends cc.Component {
     @property(cc.Sprite)
     sprite: cc.Sprite | null = null;
 
+    @property(cc.SpriteAtlas)
+    goombaAtlas: cc.SpriteAtlas | null = null;
+
     @property
     moveSpeed: number = 60;
 
     @property
     stompDestroyDelay: number = 0.35;
 
+    @property
+    turnCooldown: number = 0.08;
+
     private _direction: number = -1;
     private _isStomped: boolean = false;
+    private _turnCooldownTimer: number = 0;
 
     onLoad(): void {
         if (!this.sprite) {
             this.sprite = this.getComponent(cc.Sprite) || this.getComponentInChildren(cc.Sprite);
+        }
+
+        if (!this.goombaAtlas && this.sprite) {
+            this.goombaAtlas = (this.sprite as any)._atlas as cc.SpriteAtlas | null;
         }
 
         if (!this.rb) {
@@ -51,7 +62,6 @@ export default class EnemyController extends cc.Component {
         if (this.rb) {
             this.rb.type = cc.RigidBodyType.Dynamic;
             this.rb.fixedRotation = true;
-            this.rb.gravityScale = 0;
             this.rb.enabledContactListener = true;
         }
     }
@@ -59,6 +69,10 @@ export default class EnemyController extends cc.Component {
     update(dt: number): void {
         if (!this.rb || this._isStomped) {
             return;
+        }
+
+        if (this._turnCooldownTimer > 0) {
+            this._turnCooldownTimer -= dt;
         }
 
         const velocity = this.rb.linearVelocity;
@@ -75,7 +89,17 @@ export default class EnemyController extends cc.Component {
             return;
         }
 
-        if (this.isWallCollider(otherCollider) && this.isSideContact(contact, selfCollider)) {
+        if (this.isWallCollider(otherCollider) && this.shouldTurnAround(contact, selfCollider)) {
+            this.reverseDirection();
+        }
+    }
+
+    onPreSolve(contact: cc.PhysicsContact, selfCollider: cc.Collider, otherCollider: cc.Collider): void {
+        if (!otherCollider || !otherCollider.node || this._isStomped) {
+            return;
+        }
+
+        if (this.isWallCollider(otherCollider) && this.shouldTurnAround(contact, selfCollider)) {
             this.reverseDirection();
         }
     }
@@ -90,13 +114,17 @@ export default class EnemyController extends cc.Component {
 
         if (this.rb) {
             this.rb.linearVelocity = cc.v2(0, 0);
-            this.rb.gravityScale = 0;
             this.rb.enabledContactListener = false;
         }
 
-        const collider = this.getComponent(cc.PhysicsBoxCollider);
-        if (collider) {
-            collider.enabled = false;
+        const boxCollider = this.getComponent(cc.PhysicsBoxCollider);
+        if (boxCollider) {
+            boxCollider.enabled = false;
+        }
+
+        const circleCollider = this.getComponent(cc.PhysicsCircleCollider);
+        if (circleCollider) {
+            circleCollider.enabled = false;
         }
 
         this.applyStompedSprite();
@@ -109,19 +137,24 @@ export default class EnemyController extends cc.Component {
 
     private reverseDirection(): void {
         this._direction *= -1;
+        this._turnCooldownTimer = this.turnCooldown;
     }
 
     private isWallCollider(collider: cc.Collider): boolean {
         return collider.node.group === GroupNames.Wall;
     }
 
-    private isSideContact(contact: cc.PhysicsContact, selfCollider: cc.Collider): boolean {
+    private shouldTurnAround(contact: cc.PhysicsContact, selfCollider: cc.Collider): boolean {
+        if (this._turnCooldownTimer > 0) {
+            return false;
+        }
+
         let normal = contact.getWorldManifold().normal;
         if (contact.colliderA === selfCollider) {
             normal = cc.v2(-normal.x, -normal.y);
         }
 
-        return Math.abs(normal.x) > 0.5;
+        return Math.abs(normal.x) > 0.2;
     }
 
     private applyFacing(): void {
@@ -137,7 +170,7 @@ export default class EnemyController extends cc.Component {
             return;
         }
 
-        const atlas = (this.sprite as any)._atlas as cc.SpriteAtlas | null;
+        const atlas = this.goombaAtlas || (this.sprite as any)._atlas as cc.SpriteAtlas | null;
         if (!atlas) {
             return;
         }
@@ -145,7 +178,10 @@ export default class EnemyController extends cc.Component {
         const stomped = atlas.getSpriteFrame("Goomba_1");
         if (stomped) {
             this.sprite.spriteFrame = stomped;
+            return;
         }
+
+        cc.warn("EnemyController: Goomba_1 frame not found in assigned atlas");
     }
 
     private resolveSize(): cc.Size {

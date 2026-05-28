@@ -23,6 +23,7 @@ export default class GameMaster extends cc.Component {
 
     onLoad(): void {
         if (cc.find("LevelBuilder")) {
+            this.enabled = false;
             return;
         }
 

@@ -180,8 +180,10 @@
     "_enabled": true,
     "rb": null,
     "sprite": null,
+    "goombaAtlas": null,
     "moveSpeed": 60,
     "stompDestroyDelay": 0.35,
+    "turnCooldown": 0.08,
     "_id": ""
   },
   {

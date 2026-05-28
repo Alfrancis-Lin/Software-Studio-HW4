@@ -258,6 +258,23 @@ Build a modular gameplay layer with clear ownership: one global state manager, o
 - Add `HeroController.ts` as a defensive movement-only controller with safe view hooks.
 - Normalize tile size and collider size so blocks are visible at 64x64 and match physics.
 - Align ground group usage with the `wall` collision group so Mario can stand on tiles.
+
+### Current Fix Pass (In Progress)
+**What is changing**
+- Force Game scene start spawn to the leftmost ground tile from the loaded map.
+- Keep Goomba gravity behavior unchanged while fixing wall-hit reverse direction stability.
+- Tighten stomp detection so Goomba is only stomped when Mario is clearly above and falling.
+- Keep the stomped visual swap to `Goomba_1` after a valid stomp.
+- Keep `LevelBuilder` as the single active map builder and treat contiguous ground tiles as continuous collision surfaces.
+- Replace per-tile ground colliders by destroying those collider components entirely, then generate overlapped strip colliders for a seam-free continuous surface.
+- Strengthen Goomba wall-turn detection on sustained wall contact to stop edge jitter.
+- Ensure stomp always resolves to `Goomba_1` using a deterministic atlas lookup path.
+
+**How to test**
+- Enter Game from LevelSelect world 1-1 and confirm Mario starts above the leftmost ground tile.
+- Let Goomba hit a wall and confirm it turns around without jittering in place.
+- Approach Goomba from side and confirm it is not stomp-killed; jump from above and confirm it is stomp-killed with stomped sprite.
+- Walk continuously across long ground rows and verify Mario, mushroom, and Goomba no longer snag on tile seams.
 - Add question block, mushroom, and enemy interaction scripts for Mario growth and shrink behavior.
 - Center the horizontal map so tiles appear on both sides of the camera.
 - Match collider size to the actual sprite node size to eliminate oversized hitboxes.

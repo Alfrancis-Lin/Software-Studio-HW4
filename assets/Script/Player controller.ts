@@ -542,7 +542,7 @@ export default class PlayerController extends cc.Component {
     private handleEnemyContact(otherCollider: cc.Collider, contact: cc.PhysicsContact): void {
         const enemyNode = otherCollider.node;
         const enemy = enemyNode.getComponent("EnemyController") as any;
-        const stomped = this.isHitFromAbove(otherCollider);
+        const stomped = this.isValidStomp(otherCollider);
 
         if (stomped && enemy && typeof enemy.stomp === "function") {
             enemy.stomp();
@@ -558,6 +558,18 @@ export default class PlayerController extends cc.Component {
         }
 
         this.requestRespawn();
+    }
+
+    private isValidStomp(otherCollider: cc.Collider): boolean {
+        if (!this.rb) {
+            return false;
+        }
+
+        const playerY = this.node.y;
+        const enemyY = otherCollider.node.y;
+        const yDelta = playerY - enemyY;
+        const fallingFastEnough = this.rb.linearVelocity.y < -30;
+        return yDelta > 10 && fallingFastEnough;
     }
 
     private getSpriteSizeForState(isBig: boolean): cc.Size {
