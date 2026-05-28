@@ -5,6 +5,10 @@
 - [ ] Plan reviewed and approved for implementation.
 - [ ] Minimal movement test scene verified in-editor.
 
+## Current Task
+- Add game-scene audio playback for bgm_1 and SFX: jump, kick, loseOneLife, PowerUp.
+- Bind HUD labels for score, life, and timer, and keep the game-over panel wired.
+
 ## Development Rules (Must Follow)
 - Update this document before any gameplay code changes.
 - Work step-by-step; do not implement everything at once.
@@ -258,6 +262,12 @@ Build a modular gameplay layer with clear ownership: one global state manager, o
 - Add `HeroController.ts` as a defensive movement-only controller with safe view hooks.
 - Normalize tile size and collider size so blocks are visible at 64x64 and match physics.
 - Align ground group usage with the `wall` collision group so Mario can stand on tiles.
+
+### Audio and HUD Wiring (In Progress)
+**What is changing**
+- Load `bgm_1` in the game scene and keep it running while SFX play.
+- Trigger `jump`, `kick`, `loseOneLife`, and `PowerUp` audio from player/enemy/item/game-state events.
+- Auto-bind score/life/timer labels and the game-over panel through scene lookup.
 
 ### Current Fix Pass (In Progress)
 **What is changing**

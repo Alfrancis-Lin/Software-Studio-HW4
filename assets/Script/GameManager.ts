@@ -1,5 +1,6 @@
 const { ccclass, property } = cc._decorator;
 
+import AudioManager from "./AudioManager";
 import { SceneNames } from "./GameTypes";
 import { NodeNames } from "./GameTypes";
 import { GroupNames } from "./GameTypes";
@@ -56,6 +57,8 @@ export default class GameManager extends cc.Component {
     start(): void {
         cc.log("GameManager: ready", this.getState());
         this.bootstrapMinimalTestScene();
+        this.ensureAudioManagerNode();
+        this.ensureHudControllers();
         this.scheduleOnce(this.syncPlayerSpawnFromLevelBuilder, 0);
         this.scheduleOnce(this.syncPlayerSpawnFromLevelBuilder, 0.1);
     }
@@ -136,6 +139,7 @@ export default class GameManager extends cc.Component {
             return;
         }
 
+        AudioManager.instance?.playLoseOneLife();
         this._life -= 1;
         cc.warn("GameManager: life lost", reason, "remaining", this._life);
 
@@ -209,12 +213,12 @@ export default class GameManager extends cc.Component {
 
         const playerNode = cc.find(NodeNames.Player);
         if (playerNode) {
-            this.playerSpawn = playerNode.position.clone();
+            this.playerSpawn = cc.v2(playerNode.position.x, playerNode.position.y);
         }
 
         const cameraNode = cc.find(NodeNames.MainCamera);
         if (cameraNode && playerNode) {
-            const follow = cameraNode.getComponent("CameraFollow") as cc.Component | null;
+            const follow = cameraNode.getComponent("CameraFollow") as any;
             if (follow) {
                 follow.target = playerNode;
             }
@@ -251,6 +255,57 @@ export default class GameManager extends cc.Component {
         collider.apply();
 
         cc.log("GameManager: created minimal test ground");
+        // Diagnostic: if a LevelBuilder exists in the scene, log its state and
+        // attempt to force a build to surface runtime errors in the console.
+        try {
+            const lbNode = cc.find(NodeNames.LevelBuilder);
+            if (lbNode) {
+                const lbComp = lbNode.getComponent("LevelBuilder") as any;
+                cc.log("GameManager: diagnostic - LevelBuilder node found", lbNode.name);
+                if (lbComp) {
+                    cc.log("GameManager: diagnostic - LevelBuilder component enabled", !!lbComp.enabled, "debugLog", !!lbComp.debugLog);
+                    if (typeof lbComp.buildLevel === 'function') {
+                        try {
+                            lbComp.buildLevel();
+                            cc.log("GameManager: diagnostic - forced LevelBuilder.buildLevel()");
+                        } catch (err) {
+                            cc.error("GameManager: diagnostic - LevelBuilder.buildLevel threw:", err);
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            cc.error("GameManager: diagnostic error while checking LevelBuilder", e);
+        }
+    }
+
+    private ensureAudioManagerNode(): void {
+        const scene = cc.director.getScene();
+        if (!scene) {
+            return;
+        }
+
+        let audioNode = cc.find(NodeNames.AudioManager);
+        if (!audioNode) {
+            audioNode = new cc.Node(NodeNames.AudioManager);
+            audioNode.parent = scene;
+        }
+
+        if (!audioNode.getComponent(AudioManager)) {
+            audioNode.addComponent(AudioManager);
+        }
+    }
+
+    private ensureHudControllers(): void {
+        const canvas = cc.find("Canvas");
+        if (canvas && !canvas.getComponent("UIHUDController")) {
+            (canvas as any).addComponent("UIHUDController");
+        }
+
+        const gameOverNode = cc.find(NodeNames.GameOverPanel);
+        if (gameOverNode && !gameOverNode.getComponent("GameOverPanelController")) {
+            (gameOverNode as any).addComponent("GameOverPanelController");
+        }
     }
 
     private syncPlayerSpawnFromLevelBuilder(): void {

@@ -1,5 +1,6 @@
 const { ccclass, property } = cc._decorator;
 
+import AudioManager from "./AudioManager";
 import PlayerController from "./Player controller";
 import { GroupNames } from "./GameTypes";
 
@@ -108,6 +109,8 @@ export default class ItemController extends cc.Component {
     }
 
     private collectByPlayer(playerNode: cc.Node): void {
+        AudioManager.instance?.playPowerUp();
+
         const player = playerNode.getComponent(PlayerController);
         if (player) {
             player.growUp();

@@ -41,5 +41,8 @@ export const NodeNames = {
     Item: "Item",
     GameMaster: "GameMaster",
     MainCamera: "Main Camera",
-    GameOverPanel: "GameOver_Panel",
+    ScoreLabel: "ScoreLabel",
+    LifeLabel: "LifeLabel",
+    TimeLabel: "TimeLabel",
+        GameOverPanel: "GameOver",
 } as const;

@@ -1,5 +1,6 @@
 const { ccclass, property } = cc._decorator;
 
+import AudioManager from "./AudioManager";
 import GameManager from "./GameManager";
 import { GroupNames } from "./GameTypes";
 
@@ -229,6 +230,7 @@ export default class PlayerController extends cc.Component {
         this.rb.linearVelocity = cc.v2(velocity.x, 0);
         this.rb.applyLinearImpulse(cc.v2(0, this.jumpImpulse), this.rb.getWorldCenter(), true);
         this._isJumping = true;
+        AudioManager.instance?.playJump();
         this.refreshSpriteFrame(true);
     }
 
@@ -546,6 +548,7 @@ export default class PlayerController extends cc.Component {
 
         if (stomped && enemy && typeof enemy.stomp === "function") {
             enemy.stomp();
+            AudioManager.instance?.playKick();
             if (this.rb) {
                 this.rb.linearVelocity = cc.v2(this.rb.linearVelocity.x, 220);
             }
