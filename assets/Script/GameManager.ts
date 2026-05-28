@@ -177,20 +177,24 @@ export default class GameManager extends cc.Component {
         this.cancelRespawn();
         cc.warn("GameManager: game over");
         this.node.emit("game-manager-gameover");
-        this.scheduleOnce(() => {
-            this.loadSceneLevelSelect();
-        }, 0);
+        cc.director.pause();
     }
 
     public loadSceneStartMenu(): void {
+        cc.director.resume();
+        cc.director.getScheduler().setTimeScale(1);
         cc.director.loadScene(SceneNames.StartMenu);
     }
 
     public loadSceneLevelSelect(): void {
+        cc.director.resume();
+        cc.director.getScheduler().setTimeScale(1);
         cc.director.loadScene(SceneNames.LevelSelect);
     }
 
     public loadSceneGame(): void {
+        cc.director.resume();
+        cc.director.getScheduler().setTimeScale(1);
         cc.director.loadScene(SceneNames.Game);
     }
 

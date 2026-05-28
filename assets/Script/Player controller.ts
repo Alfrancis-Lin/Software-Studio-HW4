@@ -40,6 +40,7 @@ export default class PlayerController extends cc.Component {
     private _isJumping: boolean = false;
     private _isBig: boolean = false;
     private _currentAtlas: cc.SpriteAtlas | null = null;
+    private _boxCollider: cc.PhysicsBoxCollider | null = null;
     private _runFrames: string[] = [];
     private _frameIndex: number = 0;
     private _frameTimer: number = 0;
@@ -47,6 +48,8 @@ export default class PlayerController extends cc.Component {
     private _gameManager: cc.Node | null = null;
     private _groundContactCount: number = 0;
     private _respawnLocked: boolean = false;
+    private _invincibleTimer: number = 0;
+    private _gameOverLocked: boolean = false;
     private _jumpFrame: string | null = null;
     private _loggedSetup: boolean = false;
 
@@ -71,7 +74,7 @@ export default class PlayerController extends cc.Component {
             this.rb = this.node.addComponent(cc.RigidBody);
         }
 
-        const collider = this.getComponent(cc.PhysicsBoxCollider) || this.node.addComponent(cc.PhysicsBoxCollider);
+        this._boxCollider = this.getComponent(cc.PhysicsBoxCollider) || this.node.addComponent(cc.PhysicsBoxCollider);
         this.ensureRigidBodySetup();
         this.ensurePhysicsManager();
         this.syncGameManagerReference();
@@ -82,14 +85,7 @@ export default class PlayerController extends cc.Component {
         this.applyCurrentAppearance(true);
 
         const frameSize = this.getSpriteSizeForState(this._isBig);
-        collider.size = cc.size(frameSize.width, frameSize.height);
-        collider.offset = cc.v2(0, 0);
-        collider.apply();
-
-        if (this.sprite) {
-            this.sprite.sizeMode = cc.Sprite.SizeMode.RAW;
-            this.sprite.node.setContentSize(frameSize);
-        }
+        this.refreshBodySize();
     }
 
     onEnable(): void {
@@ -112,6 +108,10 @@ export default class PlayerController extends cc.Component {
         if (!this._loggedSetup) {
             this.logSetupWarnings();
             this._loggedSetup = true;
+        }
+
+        if (this._gameOverLocked) {
+            return;
         }
 
         if (!this.rb) {
@@ -145,6 +145,10 @@ export default class PlayerController extends cc.Component {
             this.requestRespawn();
         }
 
+        if (this._invincibleTimer > 0) {
+            this._invincibleTimer = Math.max(0, this._invincibleTimer - dt);
+        }
+
         this.updateSpriteAnimation(dt);
     }
 
@@ -165,6 +169,22 @@ export default class PlayerController extends cc.Component {
         this._currentAtlas = this._isBig ? (this.bigAtlas || this.smallAtlas || null) : (this.smallAtlas || this.bigAtlas || null);
         this.prepareFrames();
         this.applyCurrentAppearance(true);
+        this.refreshBodySize();
+    }
+
+    private refreshBodySize(): void {
+        const frameSize = this.getSpriteSizeForState(this._isBig);
+
+        if (this._boxCollider) {
+            this._boxCollider.size = cc.size(frameSize.width, frameSize.height);
+            this._boxCollider.offset = cc.v2(0, 0);
+            this._boxCollider.apply();
+        }
+
+        if (this.sprite) {
+            this.sprite.sizeMode = cc.Sprite.SizeMode.RAW;
+            this.sprite.node.setContentSize(frameSize);
+        }
     }
 
     private bindInput(): void {
@@ -286,17 +306,26 @@ export default class PlayerController extends cc.Component {
         if (this.rb) {
             this.rb.linearVelocity = cc.v2(0, 0);
             this.rb.angularVelocity = 0;
+            this.rb.gravityScale = 1;
+            this.rb.enabledContactListener = true;
         }
 
         this._isJumping = false;
         this._respawnLocked = false;
+        this._invincibleTimer = 0;
+        this._gameOverLocked = false;
         this.setBigState(false);
         this.refreshSpriteFrame(true);
     }
 
     private onGameOver(): void {
+        this._gameOverLocked = true;
+        this.resetInputState();
         if (this.rb) {
             this.rb.linearVelocity = cc.v2(0, 0);
+            this.rb.angularVelocity = 0;
+            this.rb.gravityScale = 0;
+            this.rb.enabledContactListener = false;
         }
     }
 
@@ -546,6 +575,14 @@ export default class PlayerController extends cc.Component {
         const enemy = enemyNode.getComponent("EnemyController") as any;
         const stomped = this.isValidStomp(selfCollider, otherCollider, contact);
 
+        if (this._respawnLocked && !stomped) {
+            return;
+        }
+
+        if (!stomped && this._invincibleTimer > 0) {
+            return;
+        }
+
         if (stomped && enemy && typeof enemy.stomp === "function") {
             enemy.stomp();
             AudioManager.instance?.playKick();
@@ -557,9 +594,11 @@ export default class PlayerController extends cc.Component {
 
         if (this._isBig) {
             this.shrinkToSmall();
+            this._invincibleTimer = 1;
             return;
         }
 
+        this._respawnLocked = true;
         this.requestRespawn();
     }
 
@@ -568,16 +607,14 @@ export default class PlayerController extends cc.Component {
             return false;
         }
 
-        const playerY = this.node.y;
-        const enemyY = otherCollider.node.y;
-        const yDelta = playerY - enemyY;
         const fallingFastEnough = this.rb.linearVelocity.y < -30;
-        let normal = contact.getWorldManifold().normal;
-        if (contact.colliderA === selfCollider) {
-            normal = cc.v2(-normal.x, -normal.y);
-        }
+        const playerCollider = this._boxCollider || this.getComponent(cc.PhysicsBoxCollider);
+        const enemyCircle = otherCollider.getComponent(cc.PhysicsCircleCollider) || otherCollider.node.getComponent(cc.PhysicsCircleCollider);
 
-        return yDelta > 10 && fallingFastEnough && normal.y > 0.5;
+        const playerBottom = this.node.y - (playerCollider ? playerCollider.size.height * 0.5 : 8) + (playerCollider ? playerCollider.offset.y : 0);
+        const enemyTop = otherCollider.node.y + (enemyCircle ? enemyCircle.radius : 8) + (enemyCircle ? enemyCircle.offset.y : 0);
+
+        return fallingFastEnough && playerBottom >= enemyTop - 12;
     }
 
     private getSpriteSizeForState(isBig: boolean): cc.Size {
