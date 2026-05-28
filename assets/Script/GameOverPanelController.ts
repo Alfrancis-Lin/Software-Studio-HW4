@@ -1,5 +1,6 @@
 const { ccclass } = cc._decorator;
 
+import GameManager from "./GameManager";
 import { NodeNames, SceneNames } from "./GameTypes";
 
 @ccclass
@@ -27,12 +28,18 @@ export default class GameOverPanelController extends cc.Component {
     }
 
     private bindGameManagerEvents(): void {
+        if (GameManager.instance) {
+            this._gameManager = GameManager.instance;
+            this._gameManager.node.on("game-manager-gameover", this.onGameOver, this);
+            return;
+        }
+
         const managerNode = cc.find(NodeNames.GameManager);
         if (!managerNode) {
             return;
         }
 
-        this._gameManager = managerNode.getComponent("GameManager");
+        this._gameManager = managerNode.getComponent(GameManager);
         this._gameManager.node.on("game-manager-gameover", this.onGameOver, this);
     }
 

@@ -30,7 +30,7 @@ export const NodeNames = {
     BtnStart: "Btn_Start",
     BtnWorld11: "Btn_World_1_1",
     BtnBack: "Btn_Back",
-    GameManager: "GameManager",
+    GameManager: "Gamemanager",
     GameBootstrap: "GameBootTrap",
     GameWorld: "GameWorld",
     LevelBuilder: "LevelBuilder",
@@ -44,5 +44,5 @@ export const NodeNames = {
     ScoreLabel: "ScoreLabel",
     LifeLabel: "LifeLabel",
     TimeLabel: "TimeLabel",
-        GameOverPanel: "GameOver",
+    GameOverPanel: "GameOver",
 } as const;

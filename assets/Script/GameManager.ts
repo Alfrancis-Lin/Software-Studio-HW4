@@ -297,9 +297,9 @@ export default class GameManager extends cc.Component {
     }
 
     private ensureHudControllers(): void {
-        const canvas = cc.find("Canvas");
-        if (canvas && !canvas.getComponent("UIHUDController")) {
-            (canvas as any).addComponent("UIHUDController");
+        const uiRoot = cc.find("UI") || cc.find("Canvas");
+        if (uiRoot && !uiRoot.getComponent("UIHUDController")) {
+            (uiRoot as any).addComponent("UIHUDController");
         }
 
         const gameOverNode = cc.find(NodeNames.GameOverPanel);
